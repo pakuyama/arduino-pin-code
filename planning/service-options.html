@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>고급키트 대시보드 설계실</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: 강의 사이트의 '배선 실습실' 문법 — 위에서 결정 요약, 가운데 옵션 탭과 펼친 빵판 그림, 아래 표준 점검과 질문 */
+:root{
+  --bg:#fbfaf5; --surface:#ffffff; --ink:#1f3328; --muted:#5a6b60; --line:#d6dfd2;
+  --accent:#205b48; --accent-soft:#e3eee6; --copper:#a95714; --copper-soft:#f6e6d3;
+  --ok:#2c7a4b; --warn:#8a6100; --bad:#b3261e;
+  --font-body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  --font-mono:"IBM Plex Mono",Consolas,monospace;
+  --s1:.8125rem; --s2:.9375rem; --s3:1.0625rem; --s4:1.375rem; --s5:1.875rem;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121a16; --surface:#1a241f; --ink:#e3ebe5; --muted:#a3b4a9; --line:#2f3e36;
+  --accent:#7fcfaa; --accent-soft:#1f3a2e; --copper:#f0a35e; --copper-soft:#3a2a1a;
+  --ok:#74d39b; --warn:#e8c25a; --bad:#ff8a80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121a16; --surface:#1a241f; --ink:#e3ebe5; --muted:#a3b4a9; --line:#2f3e36;
+  --accent:#7fcfaa; --accent-soft:#1f3a2e; --copper:#f0a35e; --copper-soft:#3a2a1a;
+  --ok:#74d39b; --warn:#e8c25a; --bad:#ff8a80; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:400 var(--s3)/1.7 var(--font-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+.wrap{max-width:1240px;margin:0 auto}
+h1,h2,h3{text-wrap:balance;line-height:1.3;margin:0}
+h1{font-size:var(--s5);font-weight:700}
+h2{font-size:var(--s4);font-weight:700}
+h3{font-size:var(--s3);font-weight:700}
+p{margin:0}
+a{color:var(--accent)}
+code,.mono{font-family:var(--font-mono);font-size:.92em}
+:focus-visible{outline:3px solid var(--copper);outline-offset:3px;border-radius:4px}
+.eyebrow{font-size:var(--s1);letter-spacing:.06em;color:var(--muted);font-weight:500}
+header.top{padding-block:36px 24px;border-bottom:1px solid var(--line);display:grid;gap:12px}
+header.top p.lead{max-width:68ch;color:var(--muted)}
+section{padding-block:32px;border-bottom:1px solid var(--line);display:grid;gap:18px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:grid;gap:4px;min-width:0}
+.fact b{font-size:var(--s2)}
+.fact span{font-size:var(--s2);color:var(--muted)}
+.fact.stop{border-color:var(--copper)}
+.fact.stop b{color:var(--copper)}
+
+/* tabs */
+.tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.tab{all:unset;cursor:pointer;display:grid;gap:4px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);min-height:24px}
+.tab:hover{border-color:var(--accent)}
+.tab[aria-selected="true"]{border:2px solid var(--accent);padding:11px 13px;background:var(--accent-soft)}
+.tab:focus-visible{outline:3px solid var(--copper);outline-offset:2px}
+.tab .code{font-family:var(--font-mono);font-size:var(--s1);color:var(--muted)}
+.tab .name{font-weight:700;font-size:var(--s2)}
+.tab .chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:.75rem;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip.rec{border-color:var(--accent);color:var(--accent);font-weight:700}
+.chip.new{border-color:var(--copper);color:var(--copper)}
+
+.panel{display:grid;gap:22px}
+.intro{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px}
+@media (max-width:860px){.intro{grid-template-columns:1fr}}
+.intro .pitch{font-size:var(--s4);font-weight:500;line-height:1.5}
+.scene{color:var(--muted);max-width:65ch}
+dl.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:var(--s2)}
+dl.kv dt{color:var(--muted)}
+dl.kv dd{margin:0}
+
+.mock{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:14px;display:grid;gap:10px}
+.mock-h{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:var(--s1);color:var(--muted)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.tile{border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:grid;gap:2px;min-width:0}
+.tile .l{font-size:var(--s1);color:var(--muted)}
+.tile .v{font-size:var(--s4);font-weight:700;font-variant-numeric:tabular-nums}
+.tile .st{font-size:var(--s1);font-weight:700;display:flex;gap:6px;align-items:center}
+.st.ok{color:var(--ok)} .st.warn{color:var(--warn)} .st.bad{color:var(--bad)} .st.info{color:var(--muted)}
+.st::before{content:"";width:8px;height:8px;border-radius:2px;background:currentColor;flex:none}
+.st.warn::before{border-radius:0;clip-path:polygon(50% 0,100% 100%,0 100%)}
+.st.bad::before{border-radius:50%}
+
+.cols2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+@media (max-width:860px){.cols2{grid-template-columns:1fr}}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:var(--s2)}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:var(--s1);color:var(--muted);font-weight:500;background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td.mono,th.mono{font-family:var(--font-mono);white-space:nowrap}
+tr[aria-current="step"] td{background:var(--copper-soft)}
+.stepbtn{all:unset;cursor:pointer;font-family:var(--font-mono);min-width:28px;min-height:28px;display:inline-grid;place-items:center;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+.stepbtn:hover{border-color:var(--copper)}
+.stepbtn:focus-visible{outline:3px solid var(--copper);outline-offset:2px}
+.kind{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.kind i{width:18px;height:4px;border-radius:2px;display:inline-block}
+
+.diagram-box{display:grid;gap:10px}
+.stepper{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;font-size:var(--s2);border:1px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:6px;padding:8px 14px;cursor:pointer;min-height:40px}
+.btn:hover{background:var(--accent-soft)}
+.btn:disabled{opacity:.45;cursor:default}
+.now{flex:1 1 280px;font-size:var(--s2);min-height:1.7em}
+.now b{font-family:var(--font-mono)}
+.diagram{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:#fffdf7}
+.diagram svg{display:block;width:100%;min-width:980px;height:auto}
+.diagram svg .wire{transition:opacity .15s}
+.diagram svg.focusing .wire:not(.focus){opacity:.13}
+.diagram svg.focusing .modline{opacity:.2}
+.diagram svg .halo{stroke:#ffb562;stroke-width:13;opacity:0;fill:none}
+.diagram svg .focus .halo{opacity:.9}
+@media (prefers-reduced-motion:reduce){.diagram svg .wire{transition:none}}
+.note{font-size:var(--s2);color:var(--muted);max-width:75ch}
+ul.plain{margin:0;padding-left:1.2em;display:grid;gap:6px}
+.caution{border-left:4px solid var(--copper);background:var(--copper-soft);padding:12px 16px;border-radius:0 8px 8px 0;display:grid;gap:6px;font-size:var(--s2)}
+.caution b{color:var(--copper)}
+
+.std{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:24px}
+@media (max-width:900px){.std{grid-template-columns:1fr}}
+.q{display:grid;gap:12px;counter-reset:q}
+.q li{list-style:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:grid;gap:4px}
+.q li b{font-size:var(--s3)}
+.q li span{font-size:var(--s2);color:var(--muted)}
+.q ol{padding:0;margin:0;display:grid;gap:10px}
+footer{padding-block:24px;font-size:var(--s1);color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">피지컬AI 2기 · 10/29 대시보드 실습 준비 · 보조개발자 제안서</p>
+  <h1>고급키트로 만들 수 있는 대시보드 서비스 6가지</h1>
+  <p class="lead">10/22 웹캠 영상 인식 수업과 10/23 고급키트(SZH-EK013) 배선 자료를 읽고 정리했습니다. 각 옵션은 키트에 실제로 있는 부품만 쓰고, 강의 사이트와 같은 펼친 빵판 그림으로 한 선씩 확인할 수 있습니다.</p>
+</header>
+
+<section aria-labelledby="h-limits">
+  <h2 id="h-limits">지켜야 할 하드웨어 조건</h2>
+  <div class="facts">
+    <div class="fact"><b>보드 1대, 회로 1개</b><span>UNO 호환 R3 한 대에 스케치 하나. 회로를 바꿀 때는 이전 선을 모두 해체합니다.</span></div>
+    <div class="fact"><b>빵판 1개, 레일 미사용</b><span>1번 줄 = 5V 묶음, 2번 줄 = GND 묶음. A–E와 F–J는 홈으로 분리됩니다.</span></div>
+    <div class="fact"><b>암–수 선 10개</b><span>모듈(DHT11·LCD·키패드 등)은 암–수 선으로 연결. 옵션마다 10개 이하로 맞췄습니다.</span></div>
+    <div class="fact stop"><b>USB 전원뿐 · 모터 보류</b><span>외부 5V가 없어 서보·스텝모터(P04)는 제외. RFID는 레벨 변환기가 없어 제외했습니다.</span></div>
+    <div class="fact"><b>115200 JSON 규약</b><span><code>요청번호 명령 인수</code>를 보내고 <code>ack</code>·<code>error</code>·<code>state</code> 한 줄 JSON을 받습니다. D0/D1은 비웁니다.</span></div>
+  </div>
+</section>
+
+<section aria-labelledby="h-options">
+  <div style="display:grid;gap:6px">
+    <h2 id="h-options">서비스 옵션</h2>
+    <p class="note">P01·P03은 강의에서 제공한 회로와 코드를 그대로 씁니다. S1–S3은 같은 규칙으로 제가 새로 설계한 제안 회로라서, 강사 검토와 실물 대조를 마친 뒤에 전원을 연결해야 합니다.</p>
+  </div>
+  <div class="tabs" role="tablist" aria-label="서비스 옵션" id="tabs"></div>
+  <div id="panel" class="panel" role="tabpanel" tabindex="0"></div>
+</section>
+
+<section aria-labelledby="h-std">
+  <h2 id="h-std">ISO 9241과 WCAG 2.2를 이 대시보드에 적용하는 방법</h2>
+  <div class="std">
+    <div style="display:grid;gap:14px;min-width:0">
+      <h3>ISO 9241 · 사용성 설계 순서</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th scope="col">파트</th><th scope="col">이 프로젝트에서 할 일</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">210</td><td>사용 맥락(누가, 어디서, 무엇을 위해)을 먼저 정하고, 요구사항 → 화면 → 평가를 반복합니다. 아래 질문 1·2가 이 단계입니다.</td></tr>
+          <tr><td class="mono">11</td><td>성공 기준을 숫자로 정합니다. 예: "처음 쓰는 사람이 30초 안에 조명 자동 기준을 바꾼다", "경고를 5초 안에 알아챈다".</td></tr>
+          <tr><td class="mono">110</td><td>상호작용 원칙 7가지. 특히 <b>자기 설명성</b>(전송 중·ack·실제 관찰을 구분해 보여줌), <b>오류 내성</b>(켜는 기준 &lt; 끄는 기준을 입력 단계에서 막음), <b>통제 가능성</b>(STOP 버튼과 실시간 갱신 일시정지).</td></tr>
+          <tr><td class="mono">112</td><td>정보 표현. 정상 상태는 조용하게, 경고만 눈에 띄게 둡니다. <code>null</code>(측정 전·실패), 실제 0, 연결 끊김을 서로 다른 표시로 구분합니다.</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div style="display:grid;gap:14px;min-width:0">
+      <h3>WCAG 2.2 AA · 대시보드에서 자주 걸리는 항목</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th scope="col">기준</th><th scope="col">적용 위치</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">1.4.1</td><td>신호등 상태를 색만으로 전달하지 않습니다. "주의" 같은 글자와 모양(■ ▲ ●)을 함께 씁니다.</td></tr>
+          <tr><td class="mono">1.4.3 · 1.4.11</td><td>글자 대비 4.5:1, 그래프 선과 입력 테두리 3:1 이상. 밝은 화면과 어두운 화면 모두 확인합니다.</td></tr>
+          <tr><td class="mono">1.1.1 · 1.3.1</td><td>그래프마다 최근 값을 담은 표 또는 요약 문장을 둡니다.</td></tr>
+          <tr><td class="mono">2.2.2</td><td>1초마다 갱신되는 그래프에 일시정지 버튼을 둡니다.</td></tr>
+          <tr><td class="mono">4.1.3</td><td>"명령 적용됨", "3초 이상 수신 없음" 같은 상태 변화를 <code>aria-live</code>로 알립니다.</td></tr>
+          <tr><td class="mono">2.5.7 <small>(신규)</small></td><td>기준값 슬라이더는 드래그 없이 숫자 입력과 ± 버튼으로도 바꿀 수 있게 합니다.</td></tr>
+          <tr><td class="mono">2.5.8 <small>(신규)</small></td><td>LED 켜기·STOP 같은 조작 버튼의 크기는 최소 24×24px입니다(권장 44px).</td></tr>
+          <tr><td class="mono">2.4.11 <small>(신규)</small></td><td>고정 헤더나 알림 토스트가 키보드 포커스를 가리지 않게 합니다.</td></tr>
+          <tr><td class="mono">3.3.1 · 3.3.3</td><td>잘못된 입력(예: 기준 450 / 350)이면 이유와 고칠 방법을 입력란 옆에 씁니다.</td></tr>
+          <tr><td class="mono">3.3.7 <small>(신규)</small></td><td>COM 포트와 기준값을 기억해서 다시 입력하지 않게 합니다.</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-q">
+  <h2 id="h-q">설계를 확정하려면 답이 필요한 질문</h2>
+  <div class="q"><ol>
+    <li><b>1. 어떤 옵션으로 갈까요?</b><span>오늘 바로 시연하려면 P01을 권합니다. 이미 연결된 회로와 기준 코드가 있어서 배선 위험이 없습니다. S1–S3는 새 스케치와 실물 검토가 필요합니다.</span></li>
+    <li><b>2. 누가, 어디서 이 화면을 보나요?</b><span>혼자 책상에서 볼지, 수업 발표용인지, 가족이 함께 쓰는 공간인지에 따라 글자 크기, 경고 방식, 조작 권한이 달라집니다(ISO 9241-210 사용 맥락).</span></li>
+    <li><b>3. 웹과 보드는 어떻게 연결할까요?</b><span>강의 규약대로라면 PC 연결 프로그램(Python + pyserial)이 COM 포트를 맡고 웹은 그 API를 씁니다. Chrome의 Web Serial로 브라우저가 직접 연결하는 방법도 있지만, 한 포트에 한 프로그램이라는 규칙과 맞는지 확인해야 합니다.</span></li>
+    <li><b>4. 측정 기록을 남길까요?</b><span>실시간 화면만 보여줄지, CSV 내보내기를 할지, 파일 DB에 저장해 하루 단위 그래프까지 볼지에 따라 구조가 달라집니다.</span></li>
+  </ol></div>
+</section>
+
+<footer>출처: 피지컬AI 강의실 2026-10-22 · 2026-10-23 세션 자료(CLAUDE-HANDOFF.md, P01·P03 배선표와 펌웨어). S1–S3 배선은 같은 규칙을 따른 제안이며 실물 검증 기록이 아닙니다.</footer>
+</div>
+
+<script>
+(()=>{
+const COLX={A:560,B:592,C:624,D:656,E:688,F:777,G:809,H:841,I:873,J:905};
+const RY=r=>130+(r-1)*30;
+const P=h=>({x:COLX[h[0]],y:RY(+h.slice(1)),c:h[0],r:+h.slice(1)});
+const TOP={GND_T:140,D13:155,D12:170,D11:185,D10:200,D9:215,D8:230,D7:255,D6:270,D5:285,D4:300,D3:315,D2:330,D1:345,D0:360};
+const BOT={IOREF:120,RESET:135,"3V3":150,"5V":165,GND:180,GND2:195,VIN:210,A0:245,A1:260,A2:275,A3:290,A4:305,A5:320};
+const TOPY=264,BOTY=466;
+const SIG=["#1f6fb2","#e07b00","#7b3fa0","#0f8a7e","#b5426b","#5a7d1a","#2d4fa1","#8a5a2b","#c26a9a","#3c8dbc","#9a6b00"];
+const C5V="#d1342f",CGND="#26302b";
+const LEDC={red:"#d63a2f",yellow:"#e0a800",green:"#2e9d4f"};
+
+/* ---------- 회로 데이터 ---------- */
+const DIAG={
+P01:{
+  pins:[["LED","D8"],["BUTTON","D2"],["POT","A0"],["LIGHT","A1"],["DHT","D4"],["SDA","A4"],["SCL","A5"]],
+  comps:[
+    {t:"res",a:"C4",b:"C7",v:"1kΩ",name:"LED 저항 1kΩ"},
+    {t:"led",a:"E7",k:"E8",color:"red",name:"빨강 LED"},
+    {t:"btn",tl:"E10",bl:"E12",tr:"F10",br:"F12",name:"택트 스위치"},
+    {t:"pot",p1:"E14",w:"E16",p2:"E18",name:"10kΩ 가변저항"},
+    {t:"cds",a:"E20",b:"E22",name:"조도 센서 CdS"},
+    {t:"res",a:"C22",b:"C24",v:"10kΩ",name:"CdS 분압 저항 10kΩ"},
+    {t:"mod",name:"DHT11 모듈",pins:[["VCC +","J14"],["GND −","J16"],["DATA S","J18"]]},
+    {t:"mod",name:"LCD1602 I2C 백팩",pins:[["GND","J20"],["VCC","J22"],["SDA","J24"],["SCL","J26"]]}],
+  steps:[
+    ["UNO D8","A4","D8 출력이 1kΩ 저항을 거쳐 LED로 갑니다."],
+    ["UNO D2","A10","버튼 입력(INPUT_PULLUP). 누르면 GND와 연결됩니다."],
+    ["UNO A0","A16","가변저항 가운데 다리의 전압을 읽습니다."],
+    ["UNO A1","A22","CdS와 10kΩ 사이 전압을 읽습니다."],
+    ["UNO D4","F18","DHT11 데이터선입니다."],
+    ["UNO A4","F24","I2C SDA입니다."],
+    ["UNO A5","F26","I2C SCL입니다."],
+    ["UNO 5V","A1","5V 분배 묶음. USB는 아직 분리합니다."],
+    ["B1","A18","가변저항 바깥 다리에 5V."],
+    ["C1","A20","CdS 한쪽 다리에 5V."],
+    ["D1","F14","DHT11 VCC."],
+    ["E1","F1","5V 묶음을 홈 건너편으로 잇습니다."],
+    ["G1","F22","LCD VCC."],
+    ["UNO GND","F2","GND 분배 묶음."],
+    ["G2","A8","LED 짧은 다리 쪽 GND."],
+    ["H2","J10","버튼 반대편 GND."],
+    ["I2","A14","가변저항 다른 바깥 다리 GND."],
+    ["J2","A2","GND 묶음을 홈 건너편으로 잇습니다."],
+    ["B2","A24","10kΩ 저항 끝 GND."],
+    ["C2","F16","DHT11 GND."],
+    ["D2","F20","LCD GND."]]
+},
+P03:{
+  pins:[["ROW1","D5"],["ROW2","D4"],["ROW3","D3"],["ROW4","D2"],["COL1","D6"],["COL2","D7"],["COL3","D8"],["COL4","D9"],["RED","D10"],["YELLOW","D11"],["GREEN","D12"]],
+  comps:[
+    {t:"mod",name:"4×4 키패드 8핀",pins:[["1 R4","E4"],["2 R3","E6"],["3 R2","E8"],["4 R1","E10"],["5 C1","E12"],["6 C2","E14"],["7 C3","E16"],["8 C4","E18"]]},
+    {t:"res",a:"H5",b:"H7",v:"1kΩ",name:"빨강 저항 1kΩ"},
+    {t:"led",a:"J7",k:"J8",color:"red",name:"빨강 LED"},
+    {t:"res",a:"H11",b:"H13",v:"1kΩ",name:"노랑 저항 1kΩ"},
+    {t:"led",a:"J13",k:"J14",color:"yellow",name:"노랑 LED"},
+    {t:"res",a:"H17",b:"H19",v:"1kΩ",name:"초록 저항 1kΩ"},
+    {t:"led",a:"J19",k:"J20",color:"green",name:"초록 LED"}],
+  steps:[
+    ["UNO D2","A4","키패드 물리핀1(R4)."],["UNO D3","A6","키패드 물리핀2(R3)."],["UNO D4","A8","키패드 물리핀3(R2)."],
+    ["UNO D5","A10","키패드 물리핀4(R1)."],["UNO D6","A12","키패드 물리핀5(C1)."],["UNO D7","A14","키패드 물리핀6(C2)."],
+    ["UNO D8","A16","키패드 물리핀7(C3)."],["UNO D9","A18","키패드 물리핀8(C4)."],
+    ["UNO D10","F5","빨강 LED 저항 입력."],["UNO D11","F11","노랑 LED 저항 입력."],["UNO D12","F17","초록 LED 저항 입력."],
+    ["UNO GND","F2","GND 분배 묶음."],["G2","F8","빨강 LED GND."],["H2","F14","노랑 LED GND."],["I2","F20","초록 LED GND."]]
+},
+S1:{
+  pins:[["BUTTON","D2"],["DHT","D4"],["BUZZER","D8"],["RED","D10"],["YELLOW","D11"],["GREEN","D12"],["LIGHT","A1"]],
+  comps:[
+    {t:"res",a:"C4",b:"C7",v:"1kΩ",name:"빨강 저항 1kΩ"},
+    {t:"led",a:"E7",k:"E8",color:"red",name:"빨강 LED"},
+    {t:"res",a:"C10",b:"C13",v:"1kΩ",name:"노랑 저항 1kΩ"},
+    {t:"led",a:"E13",k:"E14",color:"yellow",name:"노랑 LED"},
+    {t:"res",a:"C16",b:"C19",v:"1kΩ",name:"초록 저항 1kΩ"},
+    {t:"led",a:"E19",k:"E20",color:"green",name:"초록 LED"},
+    {t:"btn",tl:"E23",bl:"E25",tr:"F23",br:"F25",name:"택트 스위치 · 알림 확인"},
+    {t:"mod",name:"DHT11 모듈",pins:[["VCC +","J4"],["GND −","J6"],["DATA S","J8"]]},
+    {t:"cds",a:"J11",b:"J13",name:"조도 센서 CdS"},
+    {t:"res",a:"H13",b:"H16",v:"10kΩ",name:"CdS 분압 저항 10kΩ"},
+    {t:"res",a:"H17",b:"H20",v:"1kΩ",name:"부저 제한 저항 1kΩ"},
+    {t:"bz",p:"J20",n:"J22",name:"수동 피에조 부저"}],
+  steps:[
+    ["UNO D10","A4","빨강 LED 저항 입력."],
+    ["UNO D11","A10","노랑 LED 저항 입력."],
+    ["UNO D12","A16","초록 LED 저항 입력."],
+    ["UNO D2","A23","버튼 왼쪽 위 다리(INPUT_PULLUP)."],
+    ["UNO D4","F8","DHT11 데이터선."],
+    ["UNO A1","F13","CdS와 10kΩ 사이 전압."],
+    ["UNO D8","F17","부저 저항 입력. tone() 신호."],
+    ["UNO 5V","A1","5V 분배 묶음. USB는 아직 분리합니다."],
+    ["E1","F1","5V 묶음을 홈 건너편으로 잇습니다."],
+    ["G1","F4","DHT11 VCC."],
+    ["H1","F11","CdS 한쪽 다리에 5V."],
+    ["UNO GND","F2","GND 분배 묶음."],
+    ["J2","A2","GND 묶음을 홈 건너편으로 잇습니다."],
+    ["B2","A8","빨강 LED GND."],
+    ["C2","A14","노랑 LED GND."],
+    ["D2","A20","초록 LED GND."],
+    ["E2","J25","버튼 오른쪽 아래 다리 GND(대각선 연결)."],
+    ["G2","F6","DHT11 GND."],
+    ["H2","F16","10kΩ 저항 끝 GND."],
+    ["I2","F22","부저 − 다리 GND."]]
+},
+S2:{
+  pins:[["RED","D10"],["YELLOW","D11"],["GREEN","D12"],["SOUND_AO","A0"],["SDA","A4"],["SCL","A5"]],
+  comps:[
+    {t:"res",a:"C4",b:"C7",v:"1kΩ",name:"빨강 저항 1kΩ"},
+    {t:"led",a:"E7",k:"E8",color:"red",name:"빨강 LED"},
+    {t:"res",a:"C10",b:"C13",v:"1kΩ",name:"노랑 저항 1kΩ"},
+    {t:"led",a:"E13",k:"E14",color:"yellow",name:"노랑 LED"},
+    {t:"res",a:"C16",b:"C19",v:"1kΩ",name:"초록 저항 1kΩ"},
+    {t:"led",a:"E19",k:"E20",color:"green",name:"초록 LED"},
+    {t:"mod",name:"소리 감지 모듈 (4핀)",pins:[["VCC +","J4"],["GND −","J6"],["AO","J8"],["DO",null]]},
+    {t:"mod",name:"LCD1602 I2C 백팩",pins:[["GND","J12"],["VCC","J14"],["SDA","J16"],["SCL","J18"]]}],
+  steps:[
+    ["UNO D10","A4","빨강 LED 저항 입력."],
+    ["UNO D11","A10","노랑 LED 저항 입력."],
+    ["UNO D12","A16","초록 LED 저항 입력."],
+    ["UNO A0","F8","소리 모듈 AO(아날로그)."],
+    ["UNO A4","F16","I2C SDA."],
+    ["UNO A5","F18","I2C SCL."],
+    ["UNO 5V","A1","5V 분배 묶음. USB는 아직 분리합니다."],
+    ["E1","F1","5V 묶음을 홈 건너편으로 잇습니다."],
+    ["G1","F4","소리 모듈 VCC."],
+    ["H1","F14","LCD VCC."],
+    ["UNO GND","F2","GND 분배 묶음."],
+    ["J2","A2","GND 묶음을 홈 건너편으로 잇습니다."],
+    ["B2","A8","빨강 LED GND."],
+    ["C2","A14","노랑 LED GND."],
+    ["D2","A20","초록 LED GND."],
+    ["G2","F6","소리 모듈 GND."],
+    ["H2","F12","LCD GND."]]
+},
+S3:{
+  pins:[["BUTTON","D2"],["DHT","D4"],["BUZZER","D8"],["WATER","A0"],["LIGHT","A1"]],
+  comps:[
+    {t:"cds",a:"E4",b:"E6",name:"조도 센서 CdS"},
+    {t:"res",a:"C6",b:"C9",v:"10kΩ",name:"CdS 분압 저항 10kΩ"},
+    {t:"res",a:"C12",b:"C15",v:"1kΩ",name:"부저 제한 저항 1kΩ"},
+    {t:"bz",p:"E15",n:"E17",name:"수동 피에조 부저"},
+    {t:"btn",tl:"E21",bl:"E23",tr:"F21",br:"F23",name:"택트 스위치 · 물 줬어요"},
+    {t:"mod",name:"수위 센서",pins:[["VCC +","J4"],["GND −","J6"],["S","J8"]]},
+    {t:"mod",name:"DHT11 모듈",pins:[["VCC +","J11"],["GND −","J13"],["DATA S","J15"]]}],
+  steps:[
+    ["UNO A1","A6","CdS와 10kΩ 사이 전압."],
+    ["UNO D8","A12","부저 저항 입력. tone() 신호."],
+    ["UNO D2","A21","버튼 왼쪽 위 다리(INPUT_PULLUP)."],
+    ["UNO A0","F8","수위 센서 S."],
+    ["UNO D4","F15","DHT11 데이터선."],
+    ["UNO 5V","A1","5V 분배 묶음. USB는 아직 분리합니다."],
+    ["E1","F1","5V 묶음을 홈 건너편으로 잇습니다."],
+    ["B1","A4","CdS 한쪽 다리에 5V."],
+    ["G1","F4","수위 센서 VCC."],
+    ["H1","F11","DHT11 VCC."],
+    ["UNO GND","F2","GND 분배 묶음."],
+    ["J2","A2","GND 묶음을 홈 건너편으로 잇습니다."],
+    ["B2","A9","10kΩ 저항 끝 GND."],
+    ["C2","A17","부저 − 다리 GND."],
+    ["G2","F6","수위 센서 GND."],
+    ["H2","F13","DHT11 GND."],
+    ["I2","J23","버튼 오른쪽 아래 다리 GND(대각선 연결)."]]
+}};
+
+/* ---------- 옵션 설명 ---------- */
+const OPTS=[
+{id:"p01",code:"P01",diag:"P01",name:"책상 환경 코치",rec:true,fw:"강의 기준 코드 그대로",
+ pitch:"공부·작업 책상의 온도, 습도, 밝기를 보여주고 어두워지면 조명 LED를 자동으로 켜는 대시보드.",
+ scene:"저녁에 책상에 앉아 버튼을 누르면 '집중 시작'이 기록됩니다. 해가 져서 밝기가 기준 아래로 내려가면 LED가 켜지고, 화면에 '자동으로 켜짐'이 남습니다. 가변저항은 '내가 원하는 밝기' 다이얼로 써서 자동 기준을 손으로 바꿉니다.",
+ parts:"DHT11, CdS + 10kΩ, 10kΩ 가변저항, 택트 스위치, 빨강 LED + 1kΩ, LCD1602 I2C",
+ fields:[["temperature_c","°C · 측정 전/실패는 null"],["humidity_pct","% · null 가능"],["light_raw","0–1023 원시값"],["pot_raw","0–1023 원시값"],["button_pressed","true/false"],["led · auto","LED 상태와 자동 모드"],["lcd_ready","LCD 초기화 성공 여부"]],
+ cmds:[["LED 1 / LED 0","수동 켜기·끄기(자동 해제)"],["AUTO 1 / AUTO 0","밝기 기준 자동 모드"],["THRESH 350 450","켜는 기준 &lt; 끄는 기준"],["STOP","자동 해제 + LED 끄기"]],
+ tiles:[["연결","0.8초 전 수신","ok","정상"],["온도","24.1°C","ok","쾌적"],["습도","48%","ok","쾌적"],["밝기","312 / 1023","warn","기준 350 아래"],["조명 LED","켜짐","info","자동 모드"],["희망 밝기 다이얼","63%","info","가변저항"]],
+ cautions:["버튼이 누르지 않아도 계속 눌림으로 나오면 버튼을 90° 돌려 꽂아 보세요. 택트 스위치는 다리 방향에 따라 내부 연결 쌍이 다릅니다.","LCD 실패 시 lcd_ready=false로 표시하고 나머지 센서는 계속 보여줍니다. 가짜 값을 띄우지 않습니다."]},
+{id:"s1",code:"S1",diag:"S1",name:"쾌적도 신호등",fw:"새 스케치 필요",
+ pitch:"온습도로 불쾌지수를 계산해 초록·노랑·빨강 신호등과 짧은 부저음으로 알려주는 실내 쾌적도 대시보드.",
+ scene:"거실이나 강의실 벽에 둡니다. 불쾌지수가 75를 넘으면 빨강 LED와 부저가 울리고, 화면에 '환기 권장'이 뜹니다. 누군가 버튼을 누르면 부저가 멈추고 '확인함 14:32'가 기록됩니다. 소리, 빛, 글자 세 가지 방식으로 같은 경고를 전합니다.",
+ parts:"DHT11, CdS + 10kΩ, 빨강·노랑·초록 LED + 1kΩ×3, 수동 피에조 부저 + 1kΩ, 택트 스위치",
+ fields:[["temperature_c · humidity_pct","°C · % · null 가능"],["light_raw","0–1023"],["signal","0 꺼짐 · 1 빨강 · 2 노랑 · 3 초록"],["buzzer","true/false"],["button_pressed","true/false"],["auto","대시보드 계산 신호를 따르는지"]],
+ cmds:[["SIGNAL 0–3","신호등 수동 지정(P03과 같은 번호)"],["AUTO 1 / 0","불쾌지수 자동 신호"],["BEEP 100–500","부저 ms, 범위 밖이면 error"],["MUTE 1 / 0","부저 음소거"],["STOP","LED·부저 모두 끄기"]],
+ tiles:[["연결","1.1초 전 수신","ok","정상"],["불쾌지수","76.2","bad","불쾌 · 환기 권장"],["온도","28.4°C","info","DHT11"],["습도","71%","info","DHT11"],["신호등","빨강","bad","자동"],["부저","울림","warn","버튼으로 확인"]],
+ cautions:["불쾌지수 = 0.81T + 0.01H(0.99T − 14.3) + 46.3. 68 미만 초록, 68–75 노랑, 75 이상 빨강으로 시작해 사용자와 조정합니다.","부저는 수동 피에조형인지 확인한 뒤 사용합니다(K12). 능동형·모델 미상은 직결하지 않습니다.","tone()은 Timer2를 써서 D3·D11의 PWM에 영향을 줍니다. 노랑 LED(D11)는 digitalWrite로만 켜고 끕니다."]},
+{id:"s2",code:"S2",diag:"S2",name:"교실 소음 신호등",fw:"새 스케치 필요",
+ pitch:"소리 크기를 상대값으로 읽어 신호등과 LCD로 보여주는 '조용히' 알림판과 시간대별 소음 기록.",
+ scene:"자습 시간에 소음이 노랑 기준을 넘으면 노랑, 더 커지면 빨강이 켜지고 LCD에 'TOO LOUD'가 뜹니다. 강사는 대시보드에서 기준을 조정하고, 수업 뒤에 시간대별 소음 그래프를 봅니다.",
+ parts:"소리 감지 모듈(AO 사용), 빨강·노랑·초록 LED + 1kΩ×3, LCD1602 I2C",
+ fields:[["sound_p2p","0–1023 · 50ms 구간 최대−최소"],["sound_level","0–100 상대값(dB 아님)"],["signal","0–3"],["lcd_ready","true/false"]],
+ cmds:[["SIGNAL 0–3","신호등 수동 지정"],["AUTO 1 / 0","소음 기준 자동 신호"],["THRESH 노랑 빨강","예: THRESH 200 400"],["STOP","LED 끄기, LCD 대기 문구"]],
+ tiles:[["연결","0.5초 전 수신","ok","정상"],["소음(상대)","42 / 100","warn","노랑 기준 40 초과"],["신호등","노랑","warn","자동"],["최근 10분 최대","68","info","14:20"],["LCD","표시 중","ok","lcd_ready"],["조용 시간","켜짐","info","강사 설정"]],
+ cautions:["마이크 값은 dB가 아닙니다(K08). 화면에도 '상대값'이라고 적습니다.","이 배선은 AO·DO가 있는 4핀 모듈 기준입니다. 3핀(S·+·−)이면 S가 아날로그인지 먼저 확인합니다. DO는 연결하지 않습니다."]},
+{id:"s3",code:"S3",diag:"S3",name:"반려식물 돌봄",fw:"새 스케치 필요",
+ pitch:"물통 수위, 햇빛, 온습도를 지켜보다가 물이 부족하면 부저로 알리고, '물 줬어요' 버튼으로 돌봄 일지를 남기는 대시보드.",
+ scene:"화분 옆 물받이 통에 수위 센서 끝만 담급니다. 수위 값이 기준 아래로 내려가면 부저가 짧게 울리고 대시보드에 '물 보충 필요'가 뜹니다. 물을 주고 버튼을 누르면 일지에 날짜와 시간이 기록됩니다.",
+ parts:"수위 센서, CdS + 10kΩ, DHT11, 수동 피에조 부저 + 1kΩ, 택트 스위치",
+ fields:[["water_raw","0–1023 · cm 아님"],["light_raw","0–1023"],["temperature_c · humidity_pct","°C · % · null 가능"],["button_pressed","물 준 이벤트"],["buzzer","true/false"]],
+ cmds:[["BEEP 100–500","부저 ms"],["ALARM 1 / 0","물 부족 자동 알림"],["WATER_MIN n","부족 기준 원시값"],["STOP","부저 끄기, 알림 해제"]],
+ tiles:[["연결","0.9초 전 수신","ok","정상"],["물통 수위","180 / 1023","bad","기준 250 아래"],["햇빛","640 / 1023","ok","밝음"],["온도 · 습도","22.8°C · 55%","ok","쾌적"],["마지막 물 준 시각","10/27 19:05","info","버튼 기록"],["부저","대기","info","알림 켜짐"]],
+ cautions:["수위 센서 숫자는 cm가 아닙니다. 마른 상태, 조금 담근 상태, 더 담근 상태를 먼저 기록해 기준을 정합니다(K07).","물은 PC와 보드에서 떨어뜨리고 금속 무늬만 담급니다. 관찰할 때만 전원을 연결하고 끝나면 말립니다. 센서 전원을 디지털 핀으로 켜고 끄면 부식을 줄일 수 있지만, 배선표를 바꾸는 일이라 따로 검토합니다."]},
+{id:"p03",code:"P03",diag:"P03",name:"PIN 출입 신호등",fw:"강의 기준 코드 + 대시보드 로직",
+ pitch:"4×4 키패드로 비밀번호를 입력하면 맞을 때 초록, 틀릴 때 빨강이 켜지고 대시보드에 시도 기록이 남는 출입 시뮬레이터.",
+ scene:"동아리방 문 앞 시연용입니다. 키를 누를 때마다 보드가 last_key를 보내고, 대시보드가 4자리를 모아 비교한 뒤 SIGNAL 3(초록) 또는 SIGNAL 1(빨강)을 보냅니다. 관리자는 시도 시각과 결과를 표로 봅니다.",
+ parts:"4×4 키패드, 빨강·노랑·초록 LED + 1kΩ×3",
+ fields:[["last_key","마지막으로 누른 키 문자"],["signal","0–3"]],
+ cmds:[["SIGNAL 0–3","0 꺼짐 · 1 빨강 · 2 노랑 · 3 초록"],["STOP","세 LED 끄기"]],
+ tiles:[["연결","0.4초 전 수신","ok","정상"],["입력 중","● ● ○ ○","info","2 / 4자리"],["최근 결과","거부","bad","14:31:08"],["신호등","빨강","bad","3초 뒤 꺼짐"],["오늘 시도","7회","info","성공 5 · 실패 2"]],
+ cautions:["시연용입니다. 실제 잠금장치나 릴레이(K20)와 합치지 않습니다.","P03 기준 코드는 1·2·3·0 키로 색을 바꿉니다. PIN 비교를 대시보드에서 할지, 펌웨어를 고칠지 정해야 합니다."]},
+{id:"v1",code:"V1",diag:"P03",name:"웹캠 혼잡도 신호",fw:"P03 회로 + 10/22 YOLO 코드",
+ pitch:"10/22에 만든 웹캠 YOLO 프로그램으로 관심 구역 안의 사람 수를 세고, 혼잡하면 신호등 LED를 바꾸는 비전 + 하드웨어 결합 대시보드.",
+ scene:"강의실 입구를 비추는 C270 웹캠이 구역 진입 인원을 셉니다. 대시보드는 현재 인원과 10분 추이를 보여주고, 정원의 80%를 넘으면 P03 회로에 SIGNAL 2, 넘치면 SIGNAL 1을 보냅니다. 새 배선 없이 P03을 그대로 씁니다.",
+ parts:"Logitech C270 웹캠(PC), P03 회로(키패드는 연결하지 않아도 됨), 빨강·노랑·초록 LED + 1kΩ×3",
+ fields:[["person_count","YOLO 집계(PC 쪽)"],["zone_events","구역 진입·이탈 기록"],["signal","보드 상태 0–3"]],
+ cmds:[["SIGNAL 0–3","혼잡도에 따라 전송"],["STOP","LED 끄기"]],
+ tiles:[["카메라","30 fps","ok","C270"],["구역 인원","12명","warn","정원 15의 80%"],["신호등","노랑","warn","자동"],["10분 최대","14명","info","14:12"],["보드 연결","0.6초 전 수신","ok","P03"]],
+ cautions:["영상과 얼굴은 저장하지 않고 인원 수만 기록하는 방향을 권합니다. 화면에 촬영 중임을 표시합니다.","YOLO 프로그램과 보드 연결 프로그램이 같은 PC에서 함께 돌아야 합니다. COM 포트는 연결 프로그램 하나만 엽니다."]}
+];
+
+/* ---------- SVG 생성 ---------- */
+function unoPin(name){
+  if(name==="GND") return {x:BOT.GND,y:BOTY,top:false};
+  if(name in BOT) return {x:BOT[name],y:BOTY,top:false};
+  return {x:TOP[name],y:TOPY,top:true};
+}
+const isUno=s=>s.startsWith("UNO ");
+function kindOf(st){
+  const [f]=st;
+  if(f==="UNO 5V"||(!isUno(f)&&P(f).r===1)) return "5v";
+  if(f==="UNO GND"||(!isUno(f)&&P(f).r===2)) return "gnd";
+  return "sig";
+}
+function colorOf(st,i,sigIdx){
+  const k=kindOf(st); if(k==="5v") return C5V; if(k==="gnd") return CGND; return SIG[sigIdx%SIG.length];
+}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;")}
+
+function buildSVG(code,opt){
+  const d=DIAG[code]; const o=[];
+  const used=new Set();
+  d.steps.forEach(([f,t])=>{if(!isUno(f))used.add(f); used.add(t);});
+  d.comps.forEach(c=>{
+    if(c.t==="mod") c.pins.forEach(p=>p[1]&&used.add(p[1]));
+    else ["a","b","k","tl","bl","tr","br","p1","w","p2","p","n"].forEach(k=>c[k]&&used.add(c[k]));
+  });
+
+  /* 오른쪽 카드 */
+  const cards=[]; let cy=96;
+  d.comps.forEach(c=>{
+    let lines;
+    if(c.t==="res") lines=[["한쪽",c.a],["다른쪽",c.b]];
+    else if(c.t==="led") lines=[["긴 다리 +",c.a],["짧은 다리 −",c.k]];
+    else if(c.t==="btn") lines=[["왼쪽 위",c.tl],["왼쪽 아래",c.bl],["오른쪽 위",c.tr],["오른쪽 아래",c.br]];
+    else if(c.t==="pot") lines=[["바깥1 GND",c.p1],["가운데 신호",c.w],["바깥2 5V",c.p2]];
+    else if(c.t==="cds") lines=[["다리1",c.a],["다리2",c.b]];
+    else if(c.t==="bz") lines=[["+",c.p],["−",c.n]];
+    else lines=c.pins;
+    const h=44+lines.length*22;
+    cards.push({c,lines,y:cy,h}); cy+=h+12;
+  });
+  const H=Math.max(1100,cy+20);
+
+  o.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 ${H}" font-family="IBM Plex Sans KR,Malgun Gothic,sans-serif" role="img" aria-labelledby="svgt svgd">`);
+  o.push(`<title id="svgt">${code} · ${esc(opt.name)} 빵판 배선도</title><desc id="svgd">UNO 왼쪽, 빵판 가운데, 부품 카드 오른쪽. 아래 표에 같은 연결이 순서대로 있습니다.</desc>`);
+  o.push(`<rect width="1600" height="${H}" fill="#fffdf7"/>`);
+  o.push(`<text x="28" y="40" font-size="24" font-weight="700" fill="#1f3328">${code} · ${esc(opt.name)}</text>`);
+  o.push(`<text x="28" y="70" font-size="15" fill="#704a21">USB 분리 후 조립 · 모듈 카드는 핀 이름을 펼친 그림 · 실제 좌우 핀 순서를 뜻하지 않음</text>`);
+
+  /* UNO */
+  o.push(`<text x="28" y="132" font-size="17" fill="#1f3328">UNO · USB 왼쪽 / 실제 핀 이름 확인</text>`);
+  o.push(`<rect x="20" y="250" width="360" height="230" rx="10" fill="#0f7391"/>`);
+  o.push(`<rect x="2" y="282" width="62" height="52" rx="3" fill="#b9c0c6" stroke="#7d868d"/>`);
+  o.push(`<rect x="6" y="408" width="56" height="48" rx="4" fill="#1d1d1d"/>`);
+  o.push(`<rect x="130" y="256" width="244" height="16" rx="2" fill="#1b1b1b"/><rect x="110" y="458" width="222" height="16" rx="2" fill="#1b1b1b"/>`);
+  o.push(`<text x="200" y="372" font-size="26" font-weight="700" fill="#ffffff" text-anchor="middle">UNO</text><text x="200" y="396" font-size="13" fill="#d7eef5" text-anchor="middle">호환 R3</text>`);
+  const usedPins=new Map();
+  let sigN=0; const stepColor=d.steps.map((st,i)=>{const c=colorOf(st,i,sigN); if(kindOf(st)==="sig")sigN++; return c;});
+  d.steps.forEach((st,i)=>{if(isUno(st[0]))usedPins.set(st[0].slice(4),stepColor[i]);});
+  for(const [n,x] of Object.entries(TOP)){
+    const lab=n==="GND_T"?"GND":n; const c=usedPins.get(n);
+    o.push(`<circle cx="${x}" cy="${TOPY}" r="${c?4.6:3}" fill="${c||"#e6e6e6"}" stroke="${c?"#fff":"none"}"/>`);
+    o.push(`<text x="${x}" y="${TOPY+12}" font-size="9" fill="#ffffff" transform="rotate(90 ${x} ${TOPY+12})" dominant-baseline="middle">${lab}</text>`);
+  }
+  for(const [n,x] of Object.entries(BOT)){
+    const lab=n==="GND2"?"GND":n; const c=usedPins.get(n);
+    o.push(`<circle cx="${x}" cy="${BOTY}" r="${c?4.6:3}" fill="${c||"#e6e6e6"}" stroke="${c?"#fff":"none"}"/>`);
+    o.push(`<text x="${x}" y="${BOTY-12}" font-size="9" fill="#ffffff" transform="rotate(-90 ${x} ${BOTY-12})" dominant-baseline="middle">${lab}</text>`);
+  }
+  o.push(`<text x="28" y="640" font-size="14" fill="#1f3328">위: D0–D13 / 아래: 전원·A0–A5</text>`);
+  o.push(`<text x="28" y="662" font-size="14" fill="#704a21">D0·D1은 USB 통신용으로 비움</text>`);
+
+  /* 빵판 */
+  o.push(`<rect x="505" y="92" width="440" height="${RY(30)+38-92}" rx="12" fill="#eeeae0" stroke="#bbb8ac"/>`);
+  o.push(`<rect x="708" y="118" width="48" height="${RY(30)+14-118}" fill="#cdc8ba"/>`);
+  for(const [c,x] of Object.entries(COLX)) o.push(`<text x="${x}" y="112" font-size="15" text-anchor="middle" fill="#1f3328">${c}</text>`);
+  for(let r=1;r<=30;r++){
+    const y=RY(r);
+    o.push(`<rect x="546" y="${y-8}" width="156" height="16" rx="8" fill="#dbe7d2"/><rect x="763" y="${y-8}" width="156" height="16" rx="8" fill="#dbe7d2"/>`);
+    o.push(`<text x="530" y="${y+5}" font-size="13" text-anchor="middle" fill="#3b4a40">${r}</text>`);
+  }
+  o.push(`<g id="hl"></g>`);
+  for(let r=1;r<=30;r++) for(const c of Object.keys(COLX)){
+    const h=c+r, u=used.has(h);
+    o.push(`<circle cx="${COLX[c]}" cy="${RY(r)}" r="${u?5.4:3.6}" fill="${u?"#2c5b45":"#8aa092"}"/>`);
+  }
+  o.push(`<text x="530" y="${RY(30)+70}" font-size="14" fill="#1f3328">연두 띠: 같은 금속판 · 가운데 홈 양쪽은 분리 · 1번 줄 5V 묶음 · 2번 줄 GND 묶음</text>`);
+  const lg=RY(30)+98;
+  o.push(`<line x1="530" y1="${lg}" x2="560" y2="${lg}" stroke="${C5V}" stroke-width="4"/><text x="568" y="${lg+5}" font-size="13" fill="#1f3328">5V</text>`);
+  o.push(`<line x1="610" y1="${lg}" x2="640" y2="${lg}" stroke="${CGND}" stroke-width="4"/><text x="648" y="${lg+5}" font-size="13" fill="#1f3328">GND</text>`);
+  o.push(`<line x1="700" y1="${lg}" x2="730" y2="${lg}" stroke="${SIG[0]}" stroke-width="4"/><text x="738" y="${lg+5}" font-size="13" fill="#1f3328">신호(색은 선마다 다름)</text>`);
+  o.push(`<line x1="900" y1="${lg}" x2="930" y2="${lg}" stroke="#5b7f6c" stroke-width="2" stroke-dasharray="5 4"/><text x="938" y="${lg+5}" font-size="13" fill="#1f3328">암–수 선(모듈 핀)</text>`);
+
+  /* 카드 + 모듈 점선 */
+  let ml=0;
+  cards.forEach(({c,lines,y,h})=>{
+    const mod=c.t==="mod";
+    o.push(`<rect x="1010" y="${y}" width="560" height="${h}" rx="8" fill="${mod?"#eef4f0":"#f6f3ea"}" stroke="#c3cfc0"/>`);
+    o.push(`<text x="1028" y="${y+28}" font-size="17" font-weight="700" fill="#1f3328">${esc(c.name)}</text>`);
+    lines.forEach(([lab,hole],j)=>{
+      const ly=y+52+j*22;
+      o.push(`<text x="1028" y="${ly}" font-size="14" fill="#2c3d33">${esc(lab)} → ${hole?hole:"연결하지 않음"}</text>`);
+      if(mod&&hole){
+        const p=P(hole); const vx=958+(ml%12)*3.6; ml++;
+        o.push(`<path class="modline" d="M${p.x},${p.y} H${vx} V${ly-5} H1010" fill="none" stroke="#5b7f6c" stroke-width="1.6" stroke-dasharray="5 4"/>`);
+      }
+    });
+  });
+
+  /* 부품 */
+  d.comps.forEach(c=>{
+    if(c.t==="res"){const a=P(c.a),b=P(c.b),my=(a.y+b.y)/2;
+      o.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#a8742a" stroke-width="3"/><rect x="${a.x-20}" y="${my-10}" width="40" height="20" rx="5" fill="#f3d9a4" stroke="#a8742a"/><text x="${a.x}" y="${my+4}" font-size="10.5" text-anchor="middle" fill="#3d2a0c">${c.v}</text>`);}
+    if(c.t==="led"){const a=P(c.a),k=P(c.k),my=(a.y+k.y)/2, side=a.x>720?-1:1, bx=a.x+side*24;
+      o.push(`<path d="M${a.x},${a.y} H${bx} M${k.x},${k.y} H${bx}" stroke="#7a7a7a" stroke-width="2" fill="none"/><circle cx="${bx}" cy="${my}" r="11" fill="${LEDC[c.color]}" stroke="#4a3a2a"/><text x="${bx+side*16}" y="${a.y+4}" font-size="13" font-weight="700" text-anchor="middle" fill="#1f3328">+</text>`);}
+    if(c.t==="btn"){const tl=P(c.tl),br=P(c.br);
+      o.push(`<rect x="${tl.x-12}" y="${tl.y-12}" width="${br.x-tl.x+24}" height="${br.y-tl.y+24}" rx="5" fill="#6f7d72" opacity=".55"/><circle cx="${(tl.x+br.x)/2}" cy="${(tl.y+br.y)/2}" r="15" fill="#2a332d"/>`);}
+    if(c.t==="pot"){const a=P(c.p1),b=P(c.p2);
+      o.push(`<rect x="${a.x-46}" y="${a.y-12}" width="34" height="${b.y-a.y+24}" rx="5" fill="#2f6fb0"/><circle cx="${a.x-29}" cy="${(a.y+b.y)/2}" r="11" fill="#e9eef4" stroke="#1d4b78"/><path d="M${a.x-12},${a.y} H${a.x} M${a.x-12},${(a.y+b.y)/2} H${a.x} M${a.x-12},${b.y} H${a.x}" stroke="#7a7a7a" stroke-width="2"/>`);}
+    if(c.t==="cds"){const a=P(c.a),b=P(c.b),side=a.x>720?-1:1,bx=a.x+side*26,my=(a.y+b.y)/2;
+      o.push(`<path d="M${a.x},${a.y} H${bx} M${b.x},${b.y} H${bx}" stroke="#7a7a7a" stroke-width="2" fill="none"/><ellipse cx="${bx}" cy="${my}" rx="14" ry="19" fill="#f0c27b" stroke="#a46a1f"/><text x="${bx}" y="${my+4}" font-size="9.5" text-anchor="middle" fill="#3d2a0c">CdS</text>`);}
+    if(c.t==="bz"){const p=P(c.p),n=P(c.n),side=p.x>720?-1:1,bx=p.x+side*30,my=(p.y+n.y)/2;
+      o.push(`<path d="M${p.x},${p.y} H${bx} M${n.x},${n.y} H${bx}" stroke="#7a7a7a" stroke-width="2" fill="none"/><circle cx="${bx}" cy="${my}" r="18" fill="#222"/><circle cx="${bx}" cy="${my}" r="4" fill="#555"/><text x="${bx+side*26}" y="${p.y+4}" font-size="13" font-weight="700" text-anchor="middle" fill="#1f3328">+</text>`);}
+  });
+
+  /* 선 */
+  const uno=d.steps.map((st,i)=>({st,i})).filter(({st})=>isUno(st[0]));
+  const top=uno.filter(({st})=>unoPin(st[0].slice(4)).top).sort((a,b)=>unoPin(b.st[0].slice(4)).x-unoPin(a.st[0].slice(4)).x);
+  const bot=uno.filter(({st})=>!unoPin(st[0].slice(4)).top).sort((a,b)=>unoPin(b.st[0].slice(4)).x-unoPin(a.st[0].slice(4)).x);
+  const lane={};
+  top.forEach(({i},k)=>lane[i]={ly:238-8*k,lx:398+8*k});
+  bot.forEach(({i},k)=>lane[i]={ly:494+8*k,lx:398+8*(top.length+k)});
+  d.steps.forEach((st,i)=>{
+    const [f,t]=st, col=stepColor[i], b=P(t); let path, ends;
+    if(isUno(f)){const p=unoPin(f.slice(4)),L=lane[i];
+      path=`M${p.x},${p.y} V${L.ly} H${L.lx} V${b.y} H${b.x}`; ends=[b];}
+    else{const a=P(f);
+      if(a.y===b.y) path=`M${a.x},${a.y} Q${(a.x+b.x)/2},${a.y-26} ${b.x},${b.y}`;
+      else{const mx=(a.x+b.x)/2,my=(a.y+b.y)/2,dir=mx<732?1:-1,bend=30+(i%3)*14;
+        path=`M${a.x},${a.y} Q${mx+dir*bend},${my} ${b.x},${b.y}`;}
+      ends=[a,b];}
+    o.push(`<g class="wire" data-step="${i}"><path class="halo" d="${path}"/><path d="${path}" fill="none" stroke="${col}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>${ends.map(e=>`<circle cx="${e.x}" cy="${e.y}" r="5.5" fill="${col}" stroke="#fff" stroke-width="1.5"/>`).join("")}</g>`);
+  });
+  o.push(`</svg>`);
+  return {svg:o.join(""),stepColor};
+}
+
+/* ---------- 화면 ---------- */
+const tabs=document.getElementById("tabs"), panel=document.getElementById("panel");
+tabs.innerHTML=OPTS.map((op,i)=>{
+  const d=DIAG[op.diag];
+  const fm=d.comps.filter(c=>c.t==="mod").reduce((n,c)=>n+c.pins.filter(p=>p[1]).length,0);
+  const chips=[op.rec?'<span class="chip rec">추천</span>':"",op.fw.startsWith("새")?'<span class="chip new">새 스케치</span>':'<span class="chip">기존 코드</span>',`<span class="chip">선 ${d.steps.length} · 암–수 ${fm}</span>`].join("");
+  return `<button class="tab" role="tab" id="tab-${op.id}" aria-controls="panel" aria-selected="false" tabindex="-1"><span class="code">${op.code}</span><span class="name">${op.name}</span><span class="chips">${chips}</span></button>`;
+}).join("");
+const tabEls=[...tabs.querySelectorAll(".tab")];
+tabEls.forEach((el,i)=>{
+  el.addEventListener("click",()=>select(i,true));
+  el.addEventListener("keydown",e=>{
+    let j=null;
+    if(e.key==="ArrowRight"||e.key==="ArrowDown")j=(i+1)%tabEls.length;
+    if(e.key==="ArrowLeft"||e.key==="ArrowUp")j=(i-1+tabEls.length)%tabEls.length;
+    if(e.key==="Home")j=0; if(e.key==="End")j=tabEls.length-1;
+    if(j!==null){e.preventDefault();select(j,true);tabEls[j].focus();}
+  });
+});
+
+let cur=-1, svgEl=null, curOpt=null;
+function select(i,push){
+  const op=OPTS[i]; curOpt=op;
+  tabEls.forEach((t,j)=>{t.setAttribute("aria-selected",j===i);t.tabIndex=j===i?0:-1;});
+  panel.setAttribute("aria-labelledby","tab-"+op.id);
+  if(push){try{history.replaceState(null,"","#"+op.id)}catch(e){location.hash=op.id}}
+  const d=DIAG[op.diag]; const {svg,stepColor}=buildSVG(op.diag,op);
+  const fm=d.comps.filter(c=>c.t==="mod").reduce((n,c)=>n+c.pins.filter(p=>p[1]).length,0);
+  const kindLabel=st=>{const k=kindOf(st);return k==="5v"?"5V":k==="gnd"?"GND":"신호"};
+  panel.innerHTML=`
+  <div class="intro">
+    <div style="display:grid;gap:14px;min-width:0">
+      <p class="eyebrow">${op.code} · ${op.fw}${op.diag!==op.code?` · 배선은 ${op.diag}와 같음`:""}</p>
+      <h3 class="pitch">${op.pitch}</h3>
+      <p class="scene">${op.scene}</p>
+      <dl class="kv"><dt>부품</dt><dd>${op.parts}</dd><dt>선 수</dt><dd>수–수 ${d.steps.length}개 · 암–수 ${fm}개 (키트 암–수 10개 이내)</dd></dl>
+    </div>
+    <div class="mock" aria-label="대시보드 화면 구성 예시">
+      <div class="mock-h"><b>대시보드 첫 화면 예시</b><span>예시 값 · 실제 측정 아님</span></div>
+      <div class="tiles">${op.tiles.map(([l,v,s,n])=>`<div class="tile"><span class="l">${l}</span><span class="v">${v}</span><span class="st ${s}">${n}</span></div>`).join("")}</div>
+    </div>
+  </div>
+  <div class="cols2">
+    <div style="display:grid;gap:10px;min-width:0"><h3>보드가 보내는 값 (state)</h3>
+      <div class="tbl-wrap"><table><thead><tr><th scope="col">필드</th><th scope="col">단위 · 의미</th></tr></thead><tbody>${op.fields.map(([a,b])=>`<tr><td class="mono">${a}</td><td>${b}</td></tr>`).join("")}</tbody></table></div></div>
+    <div style="display:grid;gap:10px;min-width:0"><h3>대시보드가 보내는 명령</h3>
+      <div class="tbl-wrap"><table><thead><tr><th scope="col">명령</th><th scope="col">동작</th></tr></thead><tbody>${op.cmds.map(([a,b])=>`<tr><td class="mono">${a}</td><td>${b}</td></tr>`).join("")}<tr><td class="mono">STATUS · PING</td><td>공통. 연결 직후 2초 기다린 뒤 STATUS로 회로 ID 확인</td></tr></tbody></table></div></div>
+  </div>
+  <div class="caution">${op.cautions.map(c=>`<p><b>확인</b> ${c}</p>`).join("")}</div>
+  <div class="diagram-box">
+    <h3>빵판 배선도 · 한 선씩 보기</h3>
+    <div class="stepper">
+      <button class="btn" id="prev" type="button">이전 선</button>
+      <button class="btn" id="next" type="button">다음 선</button>
+      <button class="btn" id="all" type="button">전체 보기</button>
+      <p class="now" id="now" aria-live="polite"></p>
+    </div>
+    <div class="diagram">${svg}</div>
+  </div>
+  <div class="cols2">
+    <div style="display:grid;gap:10px;min-width:0"><h3>한 선씩 연결</h3>
+      <div class="tbl-wrap"><table id="steps"><thead><tr><th scope="col">순서</th><th scope="col">출발</th><th scope="col">도착</th><th scope="col">종류</th><th scope="col">역할</th></tr></thead><tbody>
+      ${d.steps.map((st,i)=>`<tr data-i="${i}"><td><button class="stepbtn" type="button" data-i="${i}" aria-label="${i+1}번 선 그림에서 보기">${i+1}</button></td><td class="mono">${st[0].replace("UNO ","UNO ")}</td><td class="mono">빵판 ${st[1]}</td><td><span class="kind"><i style="background:${stepColor[i]}"></i>${kindLabel(st)}</span></td><td>${st[2]}</td></tr>`).join("")}
+      </tbody></table></div></div>
+    <div style="display:grid;gap:10px;align-content:start;min-width:0"><h3>코드와 보드 핀 대응</h3>
+      <div class="tbl-wrap"><table><thead><tr><th scope="col">코드 이름</th><th scope="col">UNO 핀</th></tr></thead><tbody>${d.pins.map(([a,b])=>`<tr><td class="mono">${a}</td><td class="mono">${b}</td></tr>`).join("")}</tbody></table></div>
+      <p class="note">조립 순서: USB 분리 → 부품 배치 → 신호선 → 5V 묶음 → GND 묶음 → 핀표와 <code>pins.h</code> 대조 → USB 연결 → <code>1 STATUS</code>.</p>
+    </div>
+  </div>`;
+  svgEl=panel.querySelector(".diagram svg");
+  panel.querySelector("#prev").onclick=()=>focusStep(cur<=0?d.steps.length-1:cur-1);
+  panel.querySelector("#next").onclick=()=>focusStep(cur>=d.steps.length-1?0:cur+1);
+  panel.querySelector("#all").onclick=()=>focusStep(-1);
+  panel.querySelectorAll(".stepbtn").forEach(b=>b.onclick=()=>{focusStep(+b.dataset.i);panel.querySelector(".diagram").scrollIntoView({block:"nearest"});});
+  focusStep(-1);
+}
+function focusStep(i){
+  const d=DIAG[curOpt.diag]; cur=i;
+  svgEl.classList.toggle("focusing",i>=0);
+  svgEl.querySelectorAll(".wire").forEach(g=>g.classList.toggle("focus",+g.dataset.step===i));
+  const hl=svgEl.querySelector("#hl"); hl.innerHTML="";
+  panel.querySelectorAll("#steps tbody tr").forEach(tr=>{if(+tr.dataset.i===i)tr.setAttribute("aria-current","step");else tr.removeAttribute("aria-current");});
+  const now=panel.querySelector("#now");
+  if(i<0){now.innerHTML=`전체 ${d.steps.length}개 선을 모두 표시했습니다. 다음 선을 누르면 1번부터 하나씩 강조합니다.`;return;}
+  const [f,t,role]=d.steps[i];
+  [f,t].filter(h=>!isUno(h)).forEach(h=>{const p=P(h),x=p.x<720?546:763;
+    hl.insertAdjacentHTML("beforeend",`<rect x="${x-4}" y="${p.y-11}" width="164" height="22" rx="11" fill="#ffd9a8" stroke="#df650d" stroke-width="1.5"/>`);});
+  now.innerHTML=`<b>${i+1} / ${d.steps.length}</b> · ${f} → 빵판 ${t} · ${role}`;
+}
+function fromHash(){const h=location.hash.slice(1);const i=OPTS.findIndex(o=>o.id===h);select(i<0?0:i,false);}
+window.addEventListener("hashchange",fromHash);
+fromHash();
+})();
+</script>

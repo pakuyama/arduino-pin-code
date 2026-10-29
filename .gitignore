@@ -1,0 +1,15 @@
+# PIN 해시 — 각자 PC에서 만들어집니다
+bridge/pin.json
+bridge/pin.tmp
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 로그와 개인 데이터
+data/
+*.log
+
+# Arduino 빌드 결과
+build/

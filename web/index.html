@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PIN 출입 신호등</title>
+<link rel="stylesheet" href="style.css">
+<script src="demo.js" defer></script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div>
+      <p class="eyebrow">P03 · 키패드와 신호등</p>
+      <h1>PIN 출입 신호등</h1>
+    </div>
+    <p id="conn" class="pill pill-wait" role="status"><span class="shape" aria-hidden="true"></span><span id="conn-text">연결 프로그램에 접속하는 중</span></p>
+  </div>
+</header>
+
+<main id="main" class="wrap" tabindex="-1">
+  <div id="banner" class="banner" hidden></div>
+  <p id="board-msg" class="board-msg"></p>
+
+  <!-- 화면 낭독기용 알림. 결과와 잠금 같은 상태 변화만 읽습니다. -->
+  <div id="live" class="sr" aria-live="polite" aria-atomic="true"></div>
+  <div id="alert" class="sr" role="alert"></div>
+
+  <section class="grid" aria-label="현재 상태">
+    <article class="card" aria-labelledby="h-entry">
+      <h2 id="h-entry">입력</h2>
+      <div id="dots" class="dots" aria-hidden="true"></div>
+      <p id="entry-text" class="big">입력 없음</p>
+      <p class="hint">키패드에서 숫자를 누르고 <kbd>#</kbd> 로 확인, <kbd>*</kbd> 로 지웁니다.</p>
+      <p id="notice" class="hint"></p>
+    </article>
+
+    <article class="card" aria-labelledby="h-result">
+      <h2 id="h-result">최근 결과</h2>
+      <p id="result" class="result none"><span class="shape" aria-hidden="true"></span><span id="result-text">아직 시도 없음</span></p>
+      <p id="result-detail" class="hint"></p>
+    </article>
+
+    <article class="card" aria-labelledby="h-lock">
+      <h2 id="h-lock">잠금</h2>
+      <p id="lock-text" class="big">잠기지 않음</p>
+      <div class="meter" aria-hidden="true"><div id="lock-bar"></div></div>
+      <p id="fails-text" class="hint">연속 실패 0 / 3회</p>
+    </article>
+  </section>
+
+  <section class="card wide" aria-labelledby="h-signal">
+    <div class="card-head">
+      <h2 id="h-signal">신호등</h2>
+      <p id="signal-now" class="hint">보드 상태 모름</p>
+    </div>
+    <div class="signal-row">
+      <div class="lamps" aria-hidden="true">
+        <span class="lamp" data-v="1"><i></i>빨강</span>
+        <span class="lamp" data-v="2"><i></i>노랑</span>
+        <span class="lamp" data-v="3"><i></i>초록</span>
+      </div>
+      <div class="controls" role="group" aria-labelledby="h-signal-manual">
+        <p id="h-signal-manual" class="label">직접 바꾸기</p>
+        <div class="btns">
+          <button type="button" class="btn sig" data-v="0" aria-pressed="false">끄기</button>
+          <button type="button" class="btn sig" data-v="1" aria-pressed="false">빨강</button>
+          <button type="button" class="btn sig" data-v="2" aria-pressed="false">노랑</button>
+          <button type="button" class="btn sig" data-v="3" aria-pressed="false">초록</button>
+          <button type="button" class="btn stop" id="stop">STOP</button>
+        </div>
+        <p id="cmd" class="hint" aria-live="polite"></p>
+      </div>
+    </div>
+    <p class="hint">'적용됨'은 보드 프로그램이 명령을 받았다는 뜻입니다. LED가 실제로 켜졌는지는 눈으로 확인하세요.</p>
+  </section>
+
+  <section id="screen-pad" class="card wide" aria-labelledby="h-pad">
+    <h2 id="h-pad">화면 키패드</h2>
+    <p id="pad-help" class="hint">보드의 키패드와 똑같이 동작합니다. 잠금·실패 횟수도 함께 셉니다. 버튼에 포커스가 있을 때 PC 키보드도 쓸 수 있습니다: 숫자, <kbd>Enter</kbd> = #, <kbd>Backspace</kbd>·<kbd>Esc</kbd> = *.</p>
+    <div class="keypad" id="keypad" role="group" aria-labelledby="h-pad" aria-describedby="pad-help"></div>
+    <p id="pad-msg" class="hint" role="status"></p>
+  </section>
+
+  <section class="card wide" aria-labelledby="h-log">
+    <div class="card-head">
+      <h2 id="h-log">시도 기록</h2>
+      <p class="hint">이 화면을 연 뒤의 기록만 보여주며, 창을 닫으면 사라집니다. 입력한 숫자는 남기지 않습니다.</p>
+    </div>
+    <div class="tbl">
+      <table>
+        <caption class="sr">PIN 시도 기록, 최신 순</caption>
+        <thead><tr><th scope="col">시각</th><th scope="col">결과</th><th scope="col">입력</th><th scope="col">자리 수</th><th scope="col">이유</th></tr></thead>
+        <tbody id="log"><tr class="empty"><td colspan="5">아직 기록이 없습니다.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card wide" aria-labelledby="h-pin">
+    <h2 id="h-pin">PIN 바꾸기</h2>
+    <form id="pin-form" novalidate>
+      <div id="pin-summary" class="summary" tabindex="-1" hidden></div>
+      <div class="fields">
+        <div class="field">
+          <label for="pin-current">현재 PIN</label>
+          <input id="pin-current" name="current" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" aria-describedby="pin-current-err">
+          <p id="pin-current-err" class="err"></p>
+        </div>
+        <div class="field">
+          <label for="pin-new">새 PIN <span class="hint">숫자 4~8자리</span></label>
+          <input id="pin-new" name="new" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" aria-describedby="pin-new-help pin-new-err">
+          <p id="pin-new-help" class="hint">키패드의 0~9만 쓸 수 있습니다.</p>
+          <p id="pin-new-err" class="err"></p>
+        </div>
+        <div class="field">
+          <label for="pin-confirm">새 PIN 다시 입력</label>
+          <input id="pin-confirm" name="confirm" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" aria-describedby="pin-confirm-err">
+          <p id="pin-confirm-err" class="err"></p>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="check"><input id="pin-show" type="checkbox"> 숫자 보이기</label>
+        <button type="submit" class="btn primary">PIN 바꾸기</button>
+      </div>
+      <p id="pin-status" class="hint" role="status"></p>
+    </form>
+  </section>
+
+  <details class="card wide help">
+    <summary>사용 방법과 동작 규칙</summary>
+    <ul>
+      <li>PIN이 맞으면 초록 LED가 3초, 틀리면 빨강 LED가 3초 켜집니다.</li>
+      <li>3회 연속 틀리면 30초 동안 잠기고 노랑 LED가 켜집니다. 잠긴 동안 키 입력은 무시합니다.</li>
+      <li>A·B·C·D 키는 쓰지 않습니다.</li>
+      <li>보드 상태가 3초 넘게 오지 않으면 '응답 없음'으로 표시하고 직접 조작을 막습니다. 이때 LED가 꺼졌다고 가정하지 않습니다.</li>
+      <li>응답이 없던 명령은 자동으로 다시 보내지 않습니다.</li>
+    </ul>
+  </details>
+</main>
+</body>
+</html>
